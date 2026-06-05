@@ -59,6 +59,38 @@
 	  return urlParams.get(name);
 	}
 
+	function getReplayWebUrlFromManifest(manifestJson) {
+	  const canvases = Array.isArray(manifestJson && manifestJson.items) ? manifestJson.items : [];
+	  for (const canvas of canvases) {
+		const annotationPages = Array.isArray(canvas && canvas.items) ? canvas.items : [];
+		for (const annotationPage of annotationPages) {
+		  const annotations = Array.isArray(annotationPage && annotationPage.items) ? annotationPage.items : [];
+		  for (const annotation of annotations) {
+			const body = annotation && annotation.body;
+			if (body && typeof body.id === 'string' && body.id.indexOf('https://replayweb.page/') === 0) {
+			  return body.id;
+			}
+		  }
+		}
+	  }
+	  return null;
+	}
+
+	function renderReplayWebIframe(replayUrl) {
+	  const container = document.getElementById('instanceOne');
+	  container.innerHTML = '';
+
+	  const iframe = document.createElement('iframe');
+	  iframe.src = replayUrl;
+	  iframe.title = 'ReplayWeb Viewer';
+	  iframe.width = '100%';
+	  iframe.height = '100%';
+	  iframe.style.border = '0';
+	  iframe.setAttribute('allowfullscreen', 'true');
+	
+	  container.appendChild(iframe);
+	}
+
 	// Define base URL for manifests
 	const baseManifestUrl = "https://media.archives.albany.edu/";
 
@@ -80,62 +112,74 @@
 	  throw new Error('Invalid query parameters.');
 	}
 
-	//console.log(startTime);
-	
 	// Mirador uses 0-based canvasIndex, so subtract 1
 	const canvasIndex = !isNaN(pageParam) ? pageParam - 1 : 0;
 
-	// Initialize Mirador viewer instance
-	const miradorInstanceOne = Mirador.viewer({
-	  id: 'instanceOne',
-	  windows: [{
-		loadedManifest: manifestUrl,
-		thumbnailNavigationPosition: 'off',
-		allowFullscreen: true,
-		zoomControls: true,
-		canvasIndex: canvasIndex,
-	  }],
-	  requestConfig: { credentials: 'include' },
-      workspaceControlPanel: { enabled: false },
-      workspace: { showZoomControls: true },
-      themes: {
-        light: {
-          palette: { primary: { main: '#46166B' } }
-        }
-      },
-      window: {
-        allowClose: false,
-		sideBarOpenByDefault: false,
-      },
-	  miradorSharePlugin: {
-		embedOption: {
+	async function initializeViewer() {
+	  try {
+		const manifestResponse = await fetch(manifestUrl, { credentials: 'include' });
+		if (manifestResponse.ok) {
+		  const manifestJson = await manifestResponse.json();
+		  const replayUrl = getReplayWebUrlFromManifest(manifestJson);
+		  if (replayUrl) {
+			renderReplayWebIframe(replayUrl);
+			return;
+		  }
+		}
+	  } catch (error) {
+		console.warn('Unable to inspect manifest for ReplayWeb fallback. Loading Mirador.', error);
+	  }
+
+	  Mirador.viewer({
+		id: 'instanceOne',
+		windows: [{
+		  loadedManifest: manifestUrl,
+		  thumbnailNavigationPosition: 'off',
+		  allowFullscreen: true,
+		  zoomControls: true,
+		  canvasIndex: canvasIndex,
+		}],
+		requestConfig: { credentials: 'include' },
+		workspaceControlPanel: { enabled: false },
+		workspace: { showZoomControls: true },
+		themes: {
+		  light: {
+			palette: { primary: { main: '#46166B' } }
+		  }
+		},
+		window: {
+		  allowClose: false,
+		  sideBarOpenByDefault: false,
+		},
+		miradorSharePlugin: {
+		  embedOption: {
 			enabled: true,
 			embedUrlReplacePattern: [/^/, 'https://media.archives.albany.edu/?manifest=']
-		},
-		shareLink: {
+		  },
+		  shareLink: {
 			enabled: true,
 			manifestIdReplacePattern: [/^/, 'https://media.archives.albany.edu/?manifest=']
+		  }
 		}
-	  }
-	});
-	
-  
-  // Wait for Mirador and video element to load, then set start time
-  document.addEventListener("DOMContentLoaded", function() {
-    setTimeout(function() {
-      // Locate the video element within Mirador
-      const videoElement = document.querySelector('video');
-	  // Open the sidebar directly after the viewer has loaded
-	  const sidebarToggle = document.querySelector('.mirador-window-menu-btn');
-	  if (sidebarToggle) {
-	    sidebarToggle.click();  // Open the sidebar
-	  }
-      if (videoElement && !isNaN(startTime)) {
-        videoElement.currentTime = startTime; // Set the start time
-        videoElement.play(); // Optionally auto-play the video
-      }
-    }, 200); // Delay to ensure Mirador and video are fully loaded
-  });
+	  });
+
+	  // Wait for Mirador and video element to load, then set start time
+	  setTimeout(function() {
+		// Locate the video element within Mirador
+		const videoElement = document.querySelector('video');
+		// Open the sidebar directly after the viewer has loaded
+		const sidebarToggle = document.querySelector('.mirador-window-menu-btn');
+		if (sidebarToggle) {
+		  sidebarToggle.click(); // Open the sidebar
+		}
+		if (videoElement && !isNaN(startTime)) {
+		  videoElement.currentTime = startTime; // Set the start time
+		  videoElement.play(); // Optionally auto-play the video
+		}
+	  }, 200); // Delay to ensure Mirador and video are fully loaded
+	}
+
+	document.addEventListener('DOMContentLoaded', initializeViewer);
 </script>
 
   </body>
