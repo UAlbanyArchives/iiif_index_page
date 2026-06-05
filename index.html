@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="theme-color" content="#000000">
+    <style type="text/css">
+     html, body {
+       height: 100%;
+       width: 100%;
+	   margin: 0;
+     }
+     #instanceOne {
+       width: 100%;
+       height: 100%;
+       position: relative;
+     }
+	 .mirador-window-close, .mirador-window-maximize {
+	  display: none !important;
+	}
+	@media (max-width: 768px) {
+		.mirador-window-close, [title="Full screen"] {
+		  display: none !important;
+		}
+	}
+    </style>
+    <title>Fullscreen view</title>
+	<link rel="shortcut icon" href="https://archives.albany.edu/img/mainLogo.ico"></link>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500">
+	<!-- Matomo -->
+	<script>
+	  var _paq = window._paq = window._paq || [];
+	  /* don't track ANY LibWizard forms as Outlinks -- added 7/14/25 --aap */
+      _paq.push(['setDomains', ["albany.libwizard.com", "libwizard.com"]]);
+	  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+	  _paq.push(["setCookieDomain", "*.archives.albany.edu"]);
+	  _paq.push(["setDomains", ["*.archives.albany.edu","*.media.archives.albany.edu"]]);
+	  _paq.push(["enableCrossDomainLinking"]);
+	  _paq.push(['trackPageView']);
+	  _paq.push(['enableLinkTracking']);
+	  (function() {
+		var u="https://library-albany.matomo.cloud/";
+		_paq.push(['setTrackerUrl', u+'matomo.php']);
+		_paq.push(['setSiteId', '2']);
+		var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+		g.async=true; g.src='https://cdn.matomo.cloud/library-albany.matomo.cloud/matomo.js'; s.parentNode.insertBefore(g,s);
+	  })();
+	</script>
+	<!-- End Matomo Code -->
+  </head>
+  <body>
+<div id="instanceOne"></div>
+<!--<script src="https://cdn.jsdelivr.net/npm/mirador@4.0.0-alpha.2/dist/mirador.min.js"></script>-->
+<script src="https://media.archives.albany.edu/mirador.min.js"></script>
+<script type="text/javascript">
+    // Function to get query parameter value by name
+	function getQueryParam(name) {
+	  const urlParams = new URLSearchParams(window.location.search);
+	  return urlParams.get(name);
+	}
+
+	// Define base URL for manifests
+	const baseManifestUrl = "https://media.archives.albany.edu/";
+
+	// Get query parameters
+	const manifestParam = getQueryParam('manifest');
+	const collection = getQueryParam('collection');
+	const id = getQueryParam('id');
+	const startTime = parseInt(getQueryParam('time'), 10); // Time as an integer in seconds
+	const pageParam = parseInt(getQueryParam('page'), 10); // Page number, 1-based
+
+	// Determine manifest URL
+	let manifestUrl;
+	if (manifestParam) {
+	  manifestUrl = manifestParam; // Use full manifest URL
+	} else if (collection && id) {
+	  manifestUrl = `${baseManifestUrl}${collection}/${id}/manifest.json`; // Build URL from collection and id
+	} else {
+	  console.error('Error: Either "manifest" or both "collection" and "id" query parameters must be provided.');
+	  throw new Error('Invalid query parameters.');
+	}
+
+	//console.log(startTime);
+	
+	// Mirador uses 0-based canvasIndex, so subtract 1
+	const canvasIndex = !isNaN(pageParam) ? pageParam - 1 : 0;
+
+	// Initialize Mirador viewer instance
+	const miradorInstanceOne = Mirador.viewer({
+	  id: 'instanceOne',
+	  windows: [{
+		loadedManifest: manifestUrl,
+		thumbnailNavigationPosition: 'off',
+		allowFullscreen: true,
+		zoomControls: true,
+		canvasIndex: canvasIndex,
+	  }],
+	  requestConfig: { credentials: 'include' },
+      workspaceControlPanel: { enabled: false },
+      workspace: { showZoomControls: true },
+      themes: {
+        light: {
+          palette: { primary: { main: '#46166B' } }
+        }
+      },
+      window: {
+        allowClose: false,
+		sideBarOpenByDefault: false,
+      },
+	  miradorSharePlugin: {
+		embedOption: {
+			enabled: true,
+			embedUrlReplacePattern: [/^/, 'https://media.archives.albany.edu/?manifest=']
+		},
+		shareLink: {
+			enabled: true,
+			manifestIdReplacePattern: [/^/, 'https://media.archives.albany.edu/?manifest=']
+		}
+	  }
+	});
+	
+  
+  // Wait for Mirador and video element to load, then set start time
+  document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(function() {
+      // Locate the video element within Mirador
+      const videoElement = document.querySelector('video');
+	  // Open the sidebar directly after the viewer has loaded
+	  const sidebarToggle = document.querySelector('.mirador-window-menu-btn');
+	  if (sidebarToggle) {
+	    sidebarToggle.click();  // Open the sidebar
+	  }
+      if (videoElement && !isNaN(startTime)) {
+        videoElement.currentTime = startTime; // Set the start time
+        videoElement.play(); // Optionally auto-play the video
+      }
+    }, 200); // Delay to ensure Mirador and video are fully loaded
+  });
+</script>
+
+  </body>
+</html>
