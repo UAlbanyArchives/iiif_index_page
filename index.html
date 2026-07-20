@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Fullscreen view</title>
+  <title>Fullscreen View</title>
 
   <style>
     html, body {
@@ -26,19 +26,49 @@
       background: white;
       z-index: 10;
     }
-		.spinner {
-		  width: 40px;
-		  height: 40px;
-		  border: 4px solid #EBE6F0;
-		  border-top: 4px solid #46166B;
-		  border-radius: 50%;
-		  animation: spin 1s linear infinite;
-		}
 
-		@keyframes spin {
-		  from { transform: rotate(0deg); }
-		  to   { transform: rotate(360deg); }
-		}
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #EBE6F0;
+      border-top: 4px solid #46166B;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .message-container {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+    }
+
+    .message-box {
+      max-width: 700px;
+    }
+
+    .message-box h2 {
+      color: #46166B;
+      margin-bottom: 1rem;
+    }
+
+    .message-box p {
+      line-height: 1.5;
+      margin-bottom: 1rem;
+    }
+
+    .message-box a {
+      color: #46166B;
+    }
   </style>
 
   <!-- ReplayWeb -->
@@ -53,9 +83,11 @@
 <div id="loading">
   <div class="spinner"></div>
 </div>
+
 <div id="instanceOne"></div>
 
 <script>
+
 /* -----------------------------
    Setup
 ------------------------------ */
@@ -65,33 +97,66 @@ const loader = document.getElementById("loading");
 /* -----------------------------
    Query helper
 ------------------------------ */
+
 function getQueryParam(name) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(name);
 }
 
 /* -----------------------------
+   Error display
+------------------------------ */
+
+function showMessage(title, message) {
+
+  if (loader) {
+    loader.style.display = "none";
+  }
+
+  document.getElementById("instanceOne").innerHTML = `
+    <main class="message-container">
+      <div class="message-box">
+        <h1>${title}</h1>
+        <p>${message}</p>
+        <p>
+          If you reached this page accidentally, please visit
+          <a href="https://archives.albany.edu">archives.albany.edu</a>.
+        </p>
+      </div>
+    </main>
+  `;
+}
+
+/* -----------------------------
    Extract ReplayWeb URL from IIIF
 ------------------------------ */
+
 function getReplayWebUrlFromManifest(manifestJson) {
-  const canvases = Array.isArray(manifestJson?.items) ? manifestJson.items : [];
+  const canvases = Array.isArray(manifestJson?.items)
+    ? manifestJson.items
+    : [];
+
   for (const canvas of canvases) {
     for (const annotationPage of canvas?.items || []) {
       for (const annotation of annotationPage?.items || []) {
         const body = annotation?.body;
-        if (body?.id?.includes("source=")) {   //  more robust detection
+
+        if (body?.id?.includes("source=")) {
           return body.id;
         }
       }
     }
   }
+
   return null;
 }
 
 /* -----------------------------
    Parse ReplayWeb URL
 ------------------------------ */
+
 function parseReplayWebUrl(replayUrl) {
+
   const parsed = new URL(replayUrl);
 
   const source = parsed.searchParams.get("source");
@@ -102,7 +167,6 @@ function parseReplayWebUrl(replayUrl) {
     const hashParams = new URLSearchParams(parsed.hash.substring(1));
     targetUrl = hashParams.get("url");
 
-    // strip Wayback-style prefix
     if (targetUrl && targetUrl.startsWith("https://")) {
       const match = targetUrl.match(/^https:\/\/\d+mp_\/(.+)/);
       if (match) {
@@ -117,7 +181,9 @@ function parseReplayWebUrl(replayUrl) {
 /* -----------------------------
    ReplayWeb renderer
 ------------------------------ */
+
 function renderReplayWeb(replayUrl) {
+
   const container = document.getElementById("instanceOne");
   container.innerHTML = "";
 
@@ -136,18 +202,21 @@ function renderReplayWeb(replayUrl) {
 
   container.appendChild(el);
 
-  // hide loader AFTER ReplayWeb settles
   setTimeout(() => {
-    if (loader) loader.style.display = "none";
+    if (loader) {
+      loader.style.display = "none";
+    }
   }, 300);
 }
 
 /* -----------------------------
    Mirador fallback
 ------------------------------ */
+
 function renderMirador(manifestUrl, canvasIndex, startTime) {
+
   const container = document.getElementById("instanceOne");
-  container.innerHTML = "";  // prevent overlay conflicts
+  container.innerHTML = "";
 
   Mirador.viewer({
     id: "instanceOne",
@@ -158,11 +227,13 @@ function renderMirador(manifestUrl, canvasIndex, startTime) {
     }]
   });
 
-  // hide loader immediately
-  if (loader) loader.style.display = "none";
+  if (loader) {
+    loader.style.display = "none";
+  }
 
   setTimeout(() => {
     const video = document.querySelector("video");
+
     if (video && !isNaN(startTime)) {
       video.currentTime = startTime;
       video.play();
@@ -171,27 +242,69 @@ function renderMirador(manifestUrl, canvasIndex, startTime) {
 }
 
 /* -----------------------------
-   Init logic
+   Parameters
 ------------------------------ */
 
-const baseManifestUrl = "https://media.archives.albany.edu/";
+const baseManifestUrl =
+  "https://media.archives.albany.edu/";
 
 const manifestParam = getQueryParam("manifest");
 const collection = getQueryParam("collection");
 const id = getQueryParam("id");
-const startTime = parseInt(getQueryParam("time"), 10);
-const pageParam = parseInt(getQueryParam("page"), 10);
 
-const canvasIndex = !isNaN(pageParam) ? pageParam - 1 : 0;
+const startTime =
+  parseInt(getQueryParam("time"), 10);
 
-let manifestUrl;
+const pageParam =
+  parseInt(getQueryParam("page"), 10);
+
+const canvasIndex =
+  !isNaN(pageParam)
+    ? pageParam - 1
+    : 0;
+
+let manifestUrl = null;
+
+/* -----------------------------
+   Validate parameters
+------------------------------ */
 
 if (manifestParam) {
+
   manifestUrl = manifestParam;
+
 } else if (collection && id) {
-  manifestUrl = `${baseManifestUrl}${collection}/${id}/manifest.json`;
+
+  manifestUrl =
+    `${baseManifestUrl}${collection}/${id}/manifest.json`;
+
 } else {
-  throw new Error("Missing manifest parameters");
+
+  const missing = [];
+
+  if (!collection) {
+    missing.push("collection");
+  }
+
+  if (!id) {
+    missing.push("id");
+  }
+
+  if (missing.length === 2) {
+
+    showMessage(
+      "No item specified",
+      'Please provide either a "manifest" parameter or both "collection" and "id" parameters.'
+    );
+
+  } else {
+
+    showMessage(
+      "Missing parameter",
+      `The required parameter "${missing[0]}" was not provided.`
+    );
+
+  }
 }
 
 /* -----------------------------
@@ -199,28 +312,63 @@ if (manifestParam) {
 ------------------------------ */
 
 async function initializeViewer() {
+
   try {
+
     const res = await fetch(manifestUrl);
-    if (res.ok) {
-      const manifest = await res.json();
-      const replayUrl = getReplayWebUrlFromManifest(manifest);
 
-      if (replayUrl) {
-        console.log("Using ReplayWeb");
-        renderReplayWeb(replayUrl);
-        return;
-      }
+    if (!res.ok) {
+      throw new Error(
+        `Manifest request failed (${res.status})`
+      );
     }
-  } catch (err) {
-    console.warn("ReplayWeb failed, falling back:", err);
-  }
 
-  console.log("Using Mirador fallback");
-  renderMirador(manifestUrl, canvasIndex, startTime);
+    const manifest = await res.json();
+
+    const replayUrl =
+      getReplayWebUrlFromManifest(manifest);
+
+    if (replayUrl) {
+
+      console.log("Using ReplayWeb");
+
+      renderReplayWeb(replayUrl);
+
+      return;
+    }
+
+    console.log("Using Mirador fallback");
+
+    renderMirador(
+      manifestUrl,
+      canvasIndex,
+      startTime
+    );
+
+  } catch (err) {
+
+    console.error(err);
+
+    showMessage(
+      "Unable to load item",
+      "The requested manifest could not be loaded or is not available."
+    );
+
+  }
 }
 
-document.addEventListener("DOMContentLoaded", initializeViewer);
+/* -----------------------------
+   Start viewer
+------------------------------ */
+
+if (manifestUrl) {
+  document.addEventListener(
+    "DOMContentLoaded",
+    initializeViewer
+  );
+}
 
 </script>
+
 </body>
 </html>
