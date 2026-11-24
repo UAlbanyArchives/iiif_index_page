@@ -162,10 +162,12 @@ function parseReplayWebUrl(replayUrl) {
   const source = parsed.searchParams.get("source");
 
   let targetUrl = null;
+  let ts = null;
 
   if (parsed.hash) {
     const hashParams = new URLSearchParams(parsed.hash.substring(1));
     targetUrl = hashParams.get("url");
+    ts = hashParams.get("ts");
 
     if (targetUrl && targetUrl.startsWith("https://")) {
       const match = targetUrl.match(/^https:\/\/\d+mp_\/(.+)/);
@@ -175,7 +177,7 @@ function parseReplayWebUrl(replayUrl) {
     }
   }
 
-  return { source, targetUrl };
+  return { source, targetUrl, ts };
 }
 
 /* -----------------------------
@@ -187,7 +189,7 @@ function renderReplayWeb(replayUrl) {
   const container = document.getElementById("instanceOne");
   container.innerHTML = "";
 
-  const { source, targetUrl } = parseReplayWebUrl(replayUrl);
+  const { source, targetUrl, ts } = parseReplayWebUrl(replayUrl);
 
   const el = document.createElement("replay-web-page");
 
@@ -195,6 +197,10 @@ function renderReplayWeb(replayUrl) {
 
   if (targetUrl) {
     el.setAttribute("url", targetUrl);
+  }
+
+  if (ts) {
+    el.setAttribute("ts", ts);
   }
 
   el.style.width = "100%";
