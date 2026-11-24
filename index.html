@@ -181,10 +181,48 @@ function parseReplayWebUrl(replayUrl) {
 }
 
 /* -----------------------------
+   Service worker warm-up
+------------------------------ */
+
+// On a first visit the replay iframe can load before the service worker is
+// active, which returns the server's "Index of /replay" listing instead of the player.
+async function ensureReplayServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.register(
+      "/replay/sw.js?serveIndex=1",
+      { scope: "/replay/" }
+    );
+
+    const worker = reg.installing || reg.waiting;
+
+    if (worker) {
+      await new Promise(resolve => {
+        const done = () => {
+          if (worker.state === "activated" || worker.state === "redundant") {
+            resolve();
+          }
+        };
+        worker.addEventListener("statechange", done);
+        done();
+        setTimeout(resolve, 5000);
+      });
+    }
+  } catch (err) {
+    console.warn("Service worker warm-up failed", err);
+  }
+}
+
+/* -----------------------------
    ReplayWeb renderer
 ------------------------------ */
 
-function renderReplayWeb(replayUrl) {
+async function renderReplayWeb(replayUrl) {
+
+  await ensureReplayServiceWorker();
 
   const container = document.getElementById("instanceOne");
   container.innerHTML = "";
@@ -276,37 +314,40 @@ let manifestUrl = null;
 ------------------------------ */
 
 if (manifestParam) {
+
   manifestUrl = manifestParam;
 
-  // URLSearchParams already decodes once.
-  // Decode additional encoding until this becomes an absolute URL.
-  for (let i = 0; i < 3 && !/^https?:\/\//i.test(manifestUrl); i++) {
-    manifestUrl = decodeURIComponent(manifestUrl);
-  }
-
-  if (!/^https?:\/\//i.test(manifestUrl)) {
-    throw new Error(`Invalid manifest URL: ${manifestUrl}`);
-  }
-
 } else if (collection && id) {
-  manifestUrl = `${baseManifestUrl}${collection}/${id}/manifest.json`;
+
+  manifestUrl =
+    `${baseManifestUrl}${collection}/${id}/manifest.json`;
 
 } else {
+
   const missing = [];
 
-  if (!collection) missing.push("collection");
-  if (!id) missing.push("id");
+  if (!collection) {
+    missing.push("collection");
+  }
+
+  if (!id) {
+    missing.push("id");
+  }
 
   if (missing.length === 2) {
+
     showMessage(
       "No item specified",
       'Please provide either a "manifest" parameter or both "collection" and "id" parameters.'
     );
+
   } else {
+
     showMessage(
       "Missing parameter",
       `The required parameter "${missing[0]}" was not provided.`
     );
+
   }
 }
 
@@ -335,7 +376,7 @@ async function initializeViewer() {
 
       console.log("Using ReplayWeb");
 
-      renderReplayWeb(replayUrl);
+      await renderReplayWeb(replayUrl);
 
       return;
     }
