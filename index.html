@@ -188,6 +188,12 @@ let manifestUrl;
 
 if (manifestParam) {
   manifestUrl = manifestParam;
+
+  // URLSearchParams already decodes once.
+  // Decode one additional time only if the URL is still encoded.
+  if (/^https?%3A%2F%2F/i.test(manifestUrl)) {
+    manifestUrl = decodeURIComponent(manifestUrl);
+  }
 } else if (collection && id) {
   manifestUrl = `${baseManifestUrl}${collection}/${id}/manifest.json`;
 } else {
