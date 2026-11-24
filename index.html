@@ -270,45 +270,37 @@ let manifestUrl = null;
 ------------------------------ */
 
 if (manifestParam) {
-
   manifestUrl = manifestParam;
 
   // URLSearchParams already decodes once.
-  // Decode one additional time only if the URL is still encoded.
-  if (/^https?%3A%2F%2F/i.test(manifestUrl)) {
+  // Decode additional encoding until this becomes an absolute URL.
+  for (let i = 0; i < 3 && !/^https?:\/\//i.test(manifestUrl); i++) {
     manifestUrl = decodeURIComponent(manifestUrl);
   }
-} else if (collection && id) {
 
-  manifestUrl =
-    `${baseManifestUrl}${collection}/${id}/manifest.json`;
+  if (!/^https?:\/\//i.test(manifestUrl)) {
+    throw new Error(`Invalid manifest URL: ${manifestUrl}`);
+  }
+
+} else if (collection && id) {
+  manifestUrl = `${baseManifestUrl}${collection}/${id}/manifest.json`;
 
 } else {
-
   const missing = [];
 
-  if (!collection) {
-    missing.push("collection");
-  }
-
-  if (!id) {
-    missing.push("id");
-  }
+  if (!collection) missing.push("collection");
+  if (!id) missing.push("id");
 
   if (missing.length === 2) {
-
     showMessage(
       "No item specified",
       'Please provide either a "manifest" parameter or both "collection" and "id" parameters.'
     );
-
   } else {
-
     showMessage(
       "Missing parameter",
       `The required parameter "${missing[0]}" was not provided.`
     );
-
   }
 }
 
